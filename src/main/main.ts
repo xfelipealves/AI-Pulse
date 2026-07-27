@@ -80,10 +80,7 @@ function showWindow(): void {
   const trayBounds = tray.getBounds()
   const windowBounds = window.getBounds()
   if (trayBounds.width > 0 && trayBounds.height > 0) {
-    window.setPosition(
-      Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2),
-      Math.round(trayBounds.y + trayBounds.height + 8)
-    )
+    window.setPosition(Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2), Math.round(trayBounds.y + trayBounds.height + 8))
   } else {
     moveToPrimaryDisplay(window)
   }
@@ -95,10 +92,7 @@ function moveToPrimaryDisplay(targetWindow: BrowserWindow): void {
   const display = screen.getPrimaryDisplay()
   const { x, y, width, height } = display.workArea
   const bounds = targetWindow.getBounds()
-  targetWindow.setPosition(
-    Math.round(x + (width - bounds.width) / 2),
-    Math.round(y + Math.max(24, (height - bounds.height) / 2))
-  )
+  targetWindow.setPosition(Math.round(x + (width - bounds.width) / 2), Math.round(y + Math.max(24, (height - bounds.height) / 2)))
 }
 
 function registerIpc(): void {

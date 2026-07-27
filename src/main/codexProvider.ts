@@ -39,12 +39,7 @@ type RateLimitSample = {
 }
 
 export async function loadCodexAccounts(): Promise<PulseAccount[]> {
-  const [profiles, manualConfig, latestSample, activeAccountId] = await Promise.all([
-    readProfiles(),
-    readManualConfig(),
-    readLatestRateLimitSample(),
-    readActiveAccountId()
-  ])
+  const [profiles, manualConfig, latestSample, activeAccountId] = await Promise.all([readProfiles(), readManualConfig(), readLatestRateLimitSample(), readActiveAccountId()])
 
   return Promise.all(
     profiles.map(async (profile) => {
@@ -75,12 +70,8 @@ export async function loadCodexAccounts(): Promise<PulseAccount[]> {
         updatedAt: new Date().toISOString(),
         remainingPercent,
         usagePercent,
-        usedLabel: rateSample
-          ? `5h ${formatUsed(primaryUsed)} | Weekly ${formatUsed(secondaryUsed)}`
-          : '5h -- | Weekly --',
-        resetLabel: rateSample
-          ? `5h resets ${formatReset(rateSample.primary?.resets_at)} | Week ${formatReset(rateSample.secondary?.resets_at)}`
-          : 'No recent Codex limit sample',
+        usedLabel: rateSample ? `5h ${formatUsed(primaryUsed)} | Weekly ${formatUsed(secondaryUsed)}` : '5h -- | Weekly --',
+        resetLabel: rateSample ? `5h resets ${formatReset(rateSample.primary?.resets_at)} | Week ${formatReset(rateSample.secondary?.resets_at)}` : 'No recent Codex limit sample',
         details: [
           { label: 'auth file', value: hasLocalAuth ? 'local login found' : 'missing token', tone: hasLocalAuth ? 'ok' : 'error' },
           { label: 'doctor', value: doctor.statusText, tone: doctor.status === 'error' ? 'warning' : doctor.status },
@@ -142,10 +133,7 @@ async function runDoctorForProfile(profile: string): Promise<{ status: PulseAcco
   try {
     const auth = await readFile(path.join(profilesDir, profile), 'utf8')
     await writeFile(path.join(tempHome, 'auth.json'), auth)
-    await writeFile(
-      path.join(tempHome, 'config.toml'),
-      'approval_policy = "never"\nsandbox_mode = "danger-full-access"\n'
-    )
+    await writeFile(path.join(tempHome, 'config.toml'), 'approval_policy = "never"\nsandbox_mode = "danger-full-access"\n')
 
     const { stdout } = await execFileAsync(codexBinary, ['doctor', '--json'], {
       env: { ...process.env, PATH: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH ?? ''}`, CODEX_HOME: tempHome },
@@ -192,7 +180,9 @@ async function readLatestRateLimitSample(): Promise<RateLimitSample | undefined>
     await Promise.all(
       files.map(async (file) => ({
         file,
-        mtime: await stat(file).then((value) => value.mtimeMs).catch(() => 0)
+        mtime: await stat(file)
+          .then((value) => value.mtimeMs)
+          .catch(() => 0)
       }))
     )
   ).sort((a, b) => b.mtime - a.mtime)

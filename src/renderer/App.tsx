@@ -57,7 +57,9 @@ function App(): ReactElement {
     <main className="shell">
       <header className="topbar">
         <div className="titleBlock">
-          <div className="mark"><Bot size={15} /></div>
+          <div className="mark">
+            <Bot size={15} />
+          </div>
           <div>
             <h1>AI Pulse</h1>
             <p>{snapshot?.summary ?? 'Checking Codex accounts'}</p>
@@ -81,14 +83,18 @@ function App(): ReactElement {
             <div className="sideRail unknown" />
             <div className="accountHeader">
               <div className="identity">
-                <div className="providerIcon"><Code2 size={17} /></div>
+                <div className="providerIcon">
+                  <Code2 size={17} />
+                </div>
                 <div>
                   <h2>Loading Codex</h2>
                   <p>Reading local profiles</p>
                 </div>
               </div>
             </div>
-            <div className="meter unknown"><div /></div>
+            <div className="meter unknown">
+              <div />
+            </div>
           </article>
         ) : null}
         {(snapshot?.accounts ?? []).map((account) => {
@@ -100,7 +106,9 @@ function App(): ReactElement {
               <div className={`sideRail ${account.status}`} />
               <div className="accountHeader">
                 <div className="identity">
-                  <div className="providerIcon"><Code2 size={17} /></div>
+                  <div className="providerIcon">
+                    <Code2 size={17} />
+                  </div>
                   <div>
                     <h2>{account.label}</h2>
                     <p>{account.plan}</p>
