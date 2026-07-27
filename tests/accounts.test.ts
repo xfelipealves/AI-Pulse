@@ -22,9 +22,11 @@ describe('loadCodexAccounts', () => {
   it('attaches the fresh active-account sample and only applies manual label, plan, and email fields', async () => {
     const codexHome = await createCodexHome()
     const manualConfigPath = path.join(codexHome, 'manual-config.json')
+    const sessionFile = path.join(codexHome, 'sessions', '2026', '07', '27', 'rollout-2026-07-27T11-59-00-test.jsonl')
     await writeFile(path.join(codexHome, 'auth.json'), JSON.stringify({ tokens: { account_id: 'account-active', id_token: 'token' } }))
+    await mkdir(path.dirname(sessionFile), { recursive: true })
     await writeFile(
-      path.join(codexHome, 'sessions', 'session.jsonl'),
+      sessionFile,
       `${JSON.stringify({
         timestamp: '2026-07-27T11:59:00.000Z',
         payload: {

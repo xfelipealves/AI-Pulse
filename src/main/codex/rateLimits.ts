@@ -4,7 +4,12 @@ import path from 'node:path'
 
 const FIFTEEN_MINUTES_MS = 15 * 60_000
 const MAX_SESSION_FILES = 80
+const CANDIDATE_FILE_MULTIPLIER = 4
 const MAX_TAIL_BYTES = 64 * 1024
+const YEAR_DIRECTORY = /^\d{4}$/
+const MONTH_DIRECTORY = /^(0[1-9]|1[0-2])$/
+const DAY_DIRECTORY = /^(0[1-9]|[12]\d|3[01])$/
+const ROLLOUT_SESSION_FILE = /^rollout-.+\.jsonl$/
 
 export type RateLimitWindow = {
   used_percent?: number
@@ -69,26 +74,10 @@ export async function readLatestRateLimitSample(options: ReadRateLimitOptions): 
 }
 
 async function recentSessionFiles(sessionRoot: string, maxFiles: number): Promise<string[]> {
-  const files: string[] = []
-  const directories = [sessionRoot]
+  const maxCandidates = maxFiles * CANDIDATE_FILE_MULTIPLIER
+  if (maxCandidates <= 0) return []
 
-  for (let index = 0; index < directories.length; index += 1) {
-    let entries: Dirent[]
-    try {
-      entries = await readdir(directories[index], { withFileTypes: true, encoding: 'utf8' })
-    } catch {
-      continue
-    }
-
-    for (const entry of entries) {
-      const entryPath = path.join(directories[index], entry.name)
-      if (entry.isDirectory()) {
-        directories.push(entryPath)
-      } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
-        files.push(entryPath)
-      }
-    }
-  }
+  const files = await recentCodexSessionFiles(sessionRoot, maxCandidates)
 
   const stampedFiles = await Promise.all(
     files.map(async (filePath) => ({
@@ -102,6 +91,57 @@ async function recentSessionFiles(sessionRoot: string, maxFiles: number): Promis
     .sort((left, right) => right.modifiedAt - left.modifiedAt)
     .slice(0, maxFiles)
     .map(({ filePath }) => filePath)
+}
+
+// Codex's canonical local session layout is sessions/YYYY/MM/DD/rollout-<timestamp>.jsonl.
+// Date and rollout names are chronological, so this finds the newest sessions
+// without allowing unrelated sibling directories to consume the candidate cap.
+async function recentCodexSessionFiles(sessionRoot: string, maxCandidates: number): Promise<string[]> {
+  const files: string[] = []
+
+  for (const year of await matchingDirectories(sessionRoot, YEAR_DIRECTORY)) {
+    for (const month of await matchingDirectories(year, MONTH_DIRECTORY)) {
+      for (const day of await matchingDirectories(month, DAY_DIRECTORY)) {
+        if (!isValidCalendarDate(year, month, day)) continue
+
+        const entries = await readDirectory(day)
+        for (const entry of entries.sort((left, right) => right.name.localeCompare(left.name))) {
+          if (!entry.isFile() || !ROLLOUT_SESSION_FILE.test(entry.name)) continue
+          files.push(path.join(day, entry.name))
+          if (files.length === maxCandidates) return files
+        }
+      }
+    }
+  }
+
+  return files
+}
+
+function isValidCalendarDate(yearPath: string, monthPath: string, dayPath: string): boolean {
+  const year = Number(path.basename(yearPath))
+  const month = Number(path.basename(monthPath))
+  const day = Number(path.basename(dayPath))
+  const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  return day <= daysInMonth[month - 1]
+}
+
+function isLeapYear(year: number): boolean {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+}
+
+async function matchingDirectories(directory: string, pattern: RegExp): Promise<string[]> {
+  return (await readDirectory(directory))
+    .filter((entry) => entry.isDirectory() && pattern.test(entry.name))
+    .sort((left, right) => right.name.localeCompare(left.name))
+    .map((entry) => path.join(directory, entry.name))
+}
+
+async function readDirectory(directory: string): Promise<Dirent[]> {
+  try {
+    return await readdir(directory, { withFileTypes: true, encoding: 'utf8' })
+  } catch {
+    return []
+  }
 }
 
 async function readTailLines(filePath: string, maxBytes: number): Promise<string[]> {
