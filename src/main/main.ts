@@ -1,7 +1,7 @@
 import { BrowserWindow, Menu, Tray, app, ipcMain, nativeImage, screen, shell } from 'electron'
 import path from 'node:path'
 import { homedir } from 'node:os'
-import { loadCodexAccounts, manualConfigExample } from './codexProvider'
+import { loadCodexAccounts, manualConfigExample } from './codex/accounts'
 import type { PulseSnapshot } from '../shared'
 
 let tray: Tray | null = null

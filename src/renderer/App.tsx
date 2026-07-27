@@ -151,7 +151,7 @@ function App(): ReactElement {
       {snapshot?.accounts.length === 0 && !loading ? (
         <section className="emptyState">
           <AlertCircle size={22} />
-          <p>No Codex profiles found in ~/.codex/auth-profiles.</p>
+          <p>No Codex profiles found in ~/.codex.</p>
         </section>
       ) : null}
 
@@ -161,7 +161,7 @@ function App(): ReactElement {
           <button onClick={() => window.pulse.openProfiles()} title="Open Codex profiles">
             <ExternalLink size={15} /> Open
           </button>
-          <button onClick={() => window.pulse.openConfig()} title="Edit usage overrides">
+          <button onClick={() => window.pulse.openConfig()} title="Edit account labels">
             <Settings size={15} /> Settings
           </button>
           <button onClick={() => window.pulse.quit()} title="Quit AI Pulse">
