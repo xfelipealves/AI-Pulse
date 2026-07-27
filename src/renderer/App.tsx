@@ -5,31 +5,21 @@ import { createRoot } from 'react-dom/client'
 import type { PulseSnapshot } from '../shared'
 import './styles.css'
 
-declare global {
-  interface Window {
-    pulse: {
-      getSnapshot: () => Promise<PulseSnapshot>
-      openProfiles: () => Promise<void>
-      openConfig: () => Promise<void>
-      quit: () => Promise<void>
-      onRefreshRequest: (callback: () => void) => () => void
-    }
-  }
-}
-
 function App(): ReactElement {
   const [snapshot, setSnapshot] = useState<PulseSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const bridgeAvailable = typeof window.pulse !== 'undefined'
 
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      if (!window.pulse) {
+      const bridge = window.pulse
+      if (!bridge) {
         throw new Error('Bridge not loaded')
       }
-      setSnapshot(await window.pulse.getSnapshot())
+      setSnapshot(await bridge.getSnapshot())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to refresh')
     } finally {
@@ -65,7 +55,7 @@ function App(): ReactElement {
             <p>{snapshot?.summary ?? 'Checking Codex accounts'}</p>
           </div>
         </div>
-        <button className="iconButton" onClick={refresh} disabled={loading} title="Refresh">
+        <button className="iconButton" onClick={refresh} disabled={loading || !bridgeAvailable} title="Refresh">
           <RefreshCw size={16} className={loading ? 'spin' : ''} />
         </button>
       </header>
@@ -158,13 +148,13 @@ function App(): ReactElement {
       <footer className="footer">
         <span>{updatedLabel}</span>
         <div className="actions">
-          <button onClick={() => window.pulse.openProfiles()} title="Open Codex profiles">
+          <button disabled={!bridgeAvailable} onClick={() => void window.pulse?.openProfiles()} title="Open Codex profiles">
             <ExternalLink size={15} /> Open
           </button>
-          <button onClick={() => window.pulse.openConfig()} title="Edit account labels">
+          <button disabled={!bridgeAvailable} onClick={() => void window.pulse?.openConfig()} title="Edit account labels">
             <Settings size={15} /> Settings
           </button>
-          <button onClick={() => window.pulse.quit()} title="Quit AI Pulse">
+          <button disabled={!bridgeAvailable} onClick={() => void window.pulse?.quit()} title="Quit AI Pulse">
             <Power size={15} /> Quit
           </button>
         </div>

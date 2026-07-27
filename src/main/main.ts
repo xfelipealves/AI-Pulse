@@ -3,6 +3,8 @@ import path from 'node:path'
 import { homedir } from 'node:os'
 import { loadCodexAccounts, manualConfigExample } from './codex/accounts'
 import type { PulseSnapshot } from '../shared'
+import { PULSE_CHANNELS } from '../shared/ipc'
+import { PREFERRED_POPUP_SIZE, centerInWorkArea, positionBelowTray } from './windowPosition'
 
 let tray: Tray | null = null
 let window: BrowserWindow | null = null
@@ -20,8 +22,7 @@ app.on('window-all-closed', () => {})
 
 function createWindow(): void {
   window = new BrowserWindow({
-    width: 420,
-    height: 720,
+    ...PREFERRED_POPUP_SIZE,
     show: true,
     frame: true,
     resizable: false,
@@ -34,7 +35,7 @@ function createWindow(): void {
       preload: path.join(__dirname, '../preload/preload.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: true
     }
   })
 
@@ -51,7 +52,7 @@ function createTray(): void {
   tray.on('click', toggleWindow)
   tray.on('right-click', () => {
     Menu.buildFromTemplate([
-      { label: 'Refresh', click: () => window?.webContents.send('pulse:refresh-request') },
+      { label: 'Refresh', click: () => window?.webContents.send(PULSE_CHANNELS.refreshRequest) },
       { label: 'Open Codex Profiles', click: () => shell.openPath(path.join(homedir(), '.codex/auth-profiles')) },
       { type: 'separator' },
       { label: 'Quit', click: () => app.quit() }
@@ -78,9 +79,13 @@ function showInitialWindow(): void {
 function showWindow(): void {
   if (!tray || !window) return
   const trayBounds = tray.getBounds()
-  const windowBounds = window.getBounds()
   if (trayBounds.width > 0 && trayBounds.height > 0) {
-    window.setPosition(Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2), Math.round(trayBounds.y + trayBounds.height + 8))
+    const display = screen.getDisplayNearestPoint({
+      x: Math.round(trayBounds.x + trayBounds.width / 2),
+      y: Math.round(trayBounds.y + trayBounds.height / 2)
+    })
+    const popupBounds = positionBelowTray(trayBounds, display.workArea, PREFERRED_POPUP_SIZE)
+    window.setBounds(popupBounds)
   } else {
     moveToPrimaryDisplay(window)
   }
@@ -90,13 +95,11 @@ function showWindow(): void {
 
 function moveToPrimaryDisplay(targetWindow: BrowserWindow): void {
   const display = screen.getPrimaryDisplay()
-  const { x, y, width, height } = display.workArea
-  const bounds = targetWindow.getBounds()
-  targetWindow.setPosition(Math.round(x + (width - bounds.width) / 2), Math.round(y + Math.max(24, (height - bounds.height) / 2)))
+  targetWindow.setBounds(centerInWorkArea(display.workArea, PREFERRED_POPUP_SIZE))
 }
 
 function registerIpc(): void {
-  ipcMain.handle('pulse:getSnapshot', async (): Promise<PulseSnapshot> => {
+  ipcMain.handle(PULSE_CHANNELS.getSnapshot, async (): Promise<PulseSnapshot> => {
     const accounts = await loadCodexAccounts()
     const averageRemaining = average(accounts.map((account) => account.remainingPercent))
     return {
@@ -106,8 +109,10 @@ function registerIpc(): void {
     }
   })
 
-  ipcMain.handle('pulse:openProfiles', () => shell.openPath(path.join(homedir(), '.codex/auth-profiles')))
-  ipcMain.handle('pulse:openConfig', async () => {
+  ipcMain.handle(PULSE_CHANNELS.openProfiles, async (): Promise<void> => {
+    await shell.openPath(path.join(homedir(), '.codex/auth-profiles'))
+  })
+  ipcMain.handle(PULSE_CHANNELS.openConfig, async (): Promise<void> => {
     const configPath = path.join(homedir(), '.ai-pulse.json')
     try {
       const { writeFile, access } = await import('node:fs/promises')
@@ -115,9 +120,9 @@ function registerIpc(): void {
     } catch {
       return
     }
-    shell.openPath(configPath)
+    await shell.openPath(configPath)
   })
-  ipcMain.handle('pulse:quit', () => app.quit())
+  ipcMain.handle(PULSE_CHANNELS.quit, () => app.quit())
 }
 
 function createTrayIcon(): Electron.NativeImage {
