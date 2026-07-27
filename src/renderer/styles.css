@@ -26,9 +26,15 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  overflow: hidden;
+  overflow: auto;
   background: #181919;
 }
 
@@ -134,8 +140,9 @@ h1 {
 }
 
 .cards {
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
   display: grid;
   gap: 12px;
   padding: 1px 0;
@@ -363,4 +370,10 @@ h2 {
   align-items: center;
   gap: 5px;
   font-size: 11px;
+}
+
+@media (max-height: 719px) {
+  .shell {
+    height: 100%;
+  }
 }

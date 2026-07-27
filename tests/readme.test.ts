@@ -11,5 +11,6 @@ describe('README', () => {
     expect(readme).toContain('Privacy')
     expect(readme).toContain('~/.codex')
     expect(readme).toContain('Codex-only')
+    expect(readme).toContain('shown as `login missing` with an error status')
   })
 })

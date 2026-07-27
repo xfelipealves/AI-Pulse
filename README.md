@@ -13,7 +13,7 @@ The app inspects local Codex state only:
 - Recent local Codex session records under `~/.codex/sessions` for a current rate-limit sample.
 - An optional AI Pulse display configuration at `~/.ai-pulse.json`.
 
-Profiles with the same account ID are de-duplicated. A profile without usable local authentication is shown with a login warning rather than treated as a usable account.
+Profiles with the same account ID are de-duplicated. A profile without usable local authentication is shown as `login missing` with an error status rather than treated as a usable account.
 
 ## Usage Samples and Profiles
 
