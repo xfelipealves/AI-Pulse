@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title>AI Pulse</title>
+  <defs>
+    <linearGradient id="background" x1="128" y1="96" x2="896" y2="928" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101a20"/>
+      <stop offset="1" stop-color="#152e28"/>
+    </linearGradient>
+    <linearGradient id="pulse" x1="264" y1="350" x2="768" y2="674" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#65f58a"/>
+      <stop offset="1" stop-color="#20c972"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#background)"/>
+  <rect x="56" y="56" width="912" height="912" rx="184" fill="none" stroke="#7cf5a0" stroke-opacity=".18" stroke-width="24"/>
+  <path d="M176 594h174l106-246 145 394 93-210h154" fill="none" stroke="url(#pulse)" stroke-linecap="round" stroke-linejoin="round" stroke-width="78"/>
+  <circle cx="766" cy="310" r="74" fill="#7cf5a0"/>
+  <circle cx="766" cy="310" r="34" fill="#12211e"/>
+</svg>

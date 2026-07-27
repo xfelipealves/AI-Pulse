@@ -2,13 +2,32 @@
   "name": "ai-pulse",
   "version": "0.1.0",
   "private": true,
-  "description": "macOS menu bar monitor for AI usage limits",
+  "description": "A local macOS menu bar monitor for Codex usage limits.",
+  "author": "Felipe Alves",
   "main": "out/main/main.js",
   "type": "module",
   "packageManager": "npm@10.9.4",
   "engines": {
     "node": ">=20.19.0"
   },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xfelipealves/AI-Pulse.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xfelipealves/AI-Pulse/issues"
+  },
+  "homepage": "https://github.com/xfelipealves/AI-Pulse#readme",
+  "keywords": [
+    "codex",
+    "electron",
+    "local-first",
+    "macos",
+    "menu-bar",
+    "tray",
+    "usage-monitor"
+  ],
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -47,6 +66,7 @@
     "productName": "AI Pulse",
     "mac": {
       "category": "public.app-category.developer-tools",
+      "icon": "assets/ai-pulse.icns",
       "target": [
         "dmg",
         "zip"
