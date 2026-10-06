@@ -1,58 +1,50 @@
-import { Code2 } from 'lucide-react'
 import type { ReactElement } from 'react'
-import type { PulseAccount } from '../../shared'
+import { PROVIDER_NAMES, type Account, type UsageWindow } from '../../shared/types'
+import { relativeTime, windowView } from '../format'
+import { ProviderIcon } from './ProviderIcon'
 
-type AccountCardProps = {
-  account: PulseAccount
+export function AccountCard({ account, now, showActive }: { account: Account; now: number; showActive: boolean }): ReactElement {
+  return (
+    <article className="card">
+      <header className="cardHeader">
+        <ProviderIcon provider={account.provider} />
+        <div className="identity">
+          <h2>
+            {PROVIDER_NAMES[account.provider]}
+            {account.plan ? <span className="plan">{account.plan}</span> : null}
+          </h2>
+          <p>{account.email ?? 'Signed in'}</p>
+        </div>
+        {showActive && account.active ? <span className="activeBadge">active</span> : null}
+      </header>
+
+      {account.error ? <p className="cardError">{account.error}</p> : null}
+
+      {account.windows.length > 0 ? (
+        <div className="meters">
+          {account.windows.map((window) => (
+            <Meter key={window.label} window={window} now={now} />
+          ))}
+        </div>
+      ) : null}
+
+      {account.updatedAt ? <p className="cardNote">From local Codex data, {relativeTime(account.updatedAt, now)}</p> : null}
+    </article>
+  )
 }
 
-export function AccountCard({ account }: AccountCardProps): ReactElement {
-  const remaining = account.remainingPercent
-  const barValue = remaining ?? 0
-  const isUnknown = remaining == null
-
+function Meter({ window, now }: { window: UsageWindow; now: number }): ReactElement {
+  const view = windowView(window, now)
   return (
-    <article className="accountCard">
-      <div className={`sideRail ${account.status}`} />
-      <div className="accountHeader">
-        <div className="identity">
-          <div className="providerIcon">
-            <Code2 size={17} />
-          </div>
-          <div>
-            <h2>{account.label}</h2>
-            <p>{account.plan}</p>
-          </div>
-        </div>
-        <div className={`statusPill ${account.status}`}>
-          <span />
-          {account.statusText}
-        </div>
+    <div className="meter">
+      <div className="meterLabel">
+        <span>{window.label}</span>
+        <strong>{view.usedPercent}%</strong>
       </div>
-
-      <div className="metricRow">
-        <div>
-          <strong className={isUnknown ? 'unknownMetric' : ''}>{isUnknown ? '--' : `${remaining}%`}</strong>
-          <span>remaining</span>
-        </div>
-        <div className="resetCopy">
-          <b>{account.usedLabel}</b>
-          <span>{account.resetLabel}</span>
-        </div>
+      <div className={`bar ${view.level}`} role="meter" aria-label={`${window.label} used`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={view.usedPercent}>
+        <div style={{ width: `${view.usedPercent}%` }} />
       </div>
-
-      <div className={`meter ${isUnknown ? 'unknown' : ''}`} aria-label={`${account.label} remaining`}>
-        <div style={{ width: `${barValue}%` }} />
-      </div>
-
-      <div className="detailGrid">
-        {account.details.map((detail) => (
-          <div key={detail.label}>
-            <span>{detail.label}</span>
-            <b className={detail.tone ?? ''}>{detail.value}</b>
-          </div>
-        ))}
-      </div>
-    </article>
+      <small>{view.caption}</small>
+    </div>
   )
 }

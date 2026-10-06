@@ -1,111 +1,79 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
-import { loadCodexAccounts } from '../src/main/codex/accounts'
+import { describe, expect, it } from 'vitest'
+import { findBinary, firstUrl } from '../src/main/accounts/cli'
+import { activateCodexAccount, listCodexAccounts, removeCodexAccount, storeCodexLogin } from '../src/main/accounts/codexAccounts'
+import { claudeConfigDirFor } from '../src/main/accounts/claudeAccounts'
+import { tempDir, writeAuth } from './helpers'
 
-const temporaryHomes: string[] = []
-const now = Date.parse('2026-07-27T12:00:00.000Z')
-
-async function createCodexHome(): Promise<string> {
-  const codexHome = await mkdtemp(path.join(tmpdir(), 'ai-pulse-accounts-'))
-  temporaryHomes.push(codexHome)
-  await mkdir(path.join(codexHome, 'sessions'))
-  return codexHome
+async function codexHome(): Promise<string> {
+  const home = await tempDir()
+  await writeAuth(path.join(home, 'auth.json'), 'acct-a', { email: 'a@example.com' })
+  await writeAuth(path.join(home, 'auth-profiles/loginB.json'), 'acct-b', { email: 'b@example.com' })
+  return home
 }
 
-afterEach(async () => {
-  await Promise.all(temporaryHomes.splice(0).map((directory) => rm(directory, { recursive: true, force: true })))
+const accountOf = async (file: string): Promise<string> => JSON.parse(await readFile(file, 'utf8')).tokens.account_id
+
+describe('Codex accounts', () => {
+  it('lists the system login and saved profiles', async () => {
+    expect(await listCodexAccounts(await codexHome())).toEqual([
+      { id: 'codex:acct-a', provider: 'codex', email: 'a@example.com', system: true, active: true, canActivate: false, canRemove: false },
+      { id: 'codex:acct-b', provider: 'codex', email: 'b@example.com', system: false, active: false, canActivate: true, canRemove: true }
+    ])
+  })
+
+  it('switches accounts without losing the previous login', async () => {
+    const home = await codexHome()
+
+    await activateCodexAccount(home, 'codex:acct-b')
+
+    expect(await accountOf(path.join(home, 'auth.json'))).toBe('acct-b')
+    expect((await readdir(path.join(home, 'auth-profiles'))).sort()).toEqual(['a.json', 'loginB.json'])
+    expect(await accountOf(path.join(home, 'auth-profiles/a.json'))).toBe('acct-a')
+  })
+
+  it('removes saved profiles but never the active login', async () => {
+    const home = await codexHome()
+    await expect(removeCodexAccount(home, 'codex:acct-a')).rejects.toThrow(/cannot be removed/)
+    await removeCodexAccount(home, 'codex:acct-b')
+    expect(await readdir(path.join(home, 'auth-profiles'))).toEqual([])
+  })
+
+  it('stores a fresh login as a new profile, or over the profiles of the same account', async () => {
+    const home = await codexHome()
+    const login = await tempDir()
+    await writeAuth(path.join(login, 'auth.json'), 'acct-c', { email: 'new.person@example.com' })
+    expect(await storeCodexLogin(home, login)).toBe('codex:acct-c')
+    expect(await accountOf(path.join(home, 'auth-profiles/new.person.json'))).toBe('acct-c')
+
+    const again = await tempDir()
+    await writeAuth(path.join(again, 'auth.json'), 'acct-a', { email: 'a@example.com' })
+    await writeFile(path.join(again, 'marker'), '')
+    await storeCodexLogin(home, again)
+    expect((await readdir(path.join(home, 'auth-profiles'))).sort()).toEqual(['a.json', 'loginB.json', 'new.person.json'])
+    await expect(readdir(again)).rejects.toThrow()
+  })
 })
 
-describe('loadCodexAccounts', () => {
-  it('attaches the fresh active-account sample and only applies manual label, plan, and email fields', async () => {
-    const codexHome = await createCodexHome()
-    const manualConfigPath = path.join(codexHome, 'manual-config.json')
-    const sessionFile = path.join(codexHome, 'sessions', '2026', '07', '27', 'rollout-2026-07-27T11-59-00-test.jsonl')
-    await writeFile(path.join(codexHome, 'auth.json'), JSON.stringify({ tokens: { account_id: 'account-active', id_token: 'token' } }))
-    await mkdir(path.dirname(sessionFile), { recursive: true })
-    await writeFile(
-      sessionFile,
-      `${JSON.stringify({
-        timestamp: '2026-07-27T11:59:00.000Z',
-        payload: {
-          account_id: 'account-active',
-          rate_limits: { primary: { used_percent: 40 }, secondary: { used_percent: 10 }, plan_type: 'plus' }
-        }
-      })}\n`
-    )
-    await writeFile(
-      manualConfigPath,
-      JSON.stringify({
-        accounts: {
-          default: { label: 'Personal', plan: 'Custom plan', email: 'first@example.com', status: 'error' }
-        }
-      })
-    )
+describe('Claude config directories', () => {
+  it('creates a directory for new logins and rejects path tricks', async () => {
+    const root = await tempDir()
+    expect(await claudeConfigDirFor(root, 'claude:system')).toBeUndefined()
+    expect(await claudeConfigDirFor(root, undefined, 36)).toBe(path.join(root, 'account-10'))
+    await expect(claudeConfigDirFor(root, 'claude:../../etc')).rejects.toThrow('Invalid account')
+  })
+})
 
-    const accounts = await loadCodexAccounts({
-      codexHome,
-      manualConfigPath,
-      command: 'codex',
-      now: () => now,
-      doctor: { check: async () => ({ status: 'ok', statusText: 'login ok' }) }
-    })
-
-    expect(accounts).toHaveLength(1)
-    expect(accounts[0]).toMatchObject({
-      id: 'default',
-      label: 'Personal',
-      plan: 'Custom plan',
-      accountId: 'account-active',
-      status: 'ok',
-      remainingPercent: 60,
-      usagePercent: 40
-    })
-    expect(accounts[0].details).toContainEqual({ label: 'email', value: 'first@example.com' })
+describe('CLI helpers', () => {
+  it('finds the sign-in URL inside terminal escape sequences', () => {
+    expect(firstUrl('visit: \x1b]8;;https://claude.com/oauth?a=1&b=2\x1b\\https://claude.com/oauth')).toBe('https://claude.com/oauth?a=1&b=2')
+    expect(firstUrl('nothing here')).toBeUndefined()
   })
 
-  it('does not show the default profile doctor result for a named profile', async () => {
-    const codexHome = await createCodexHome()
-    const profilesDirectory = path.join(codexHome, 'auth-profiles')
-    await mkdir(profilesDirectory)
-    await writeFile(path.join(codexHome, 'auth.json'), JSON.stringify({ tokens: { account_id: 'account-default', id_token: 'token' } }))
-    await writeFile(path.join(profilesDirectory, 'work.json'), JSON.stringify({ tokens: { account_id: 'account-work', id_token: 'token' } }))
-    let doctorCalls = 0
-
-    const accounts = await loadCodexAccounts({
-      codexHome,
-      command: 'codex',
-      now: () => now,
-      doctor: {
-        check: async () => {
-          doctorCalls += 1
-          return { status: 'ok', statusText: 'login ok' }
-        }
-      }
-    })
-
-    const namedAccount = accounts.find((account) => account.id === 'work')
-    expect(namedAccount?.details).toContainEqual({ label: 'doctor', value: 'not checked for non-default profile', tone: 'warning' })
-    expect(doctorCalls).toBe(1)
-  })
-
-  it('returns no accounts without invoking doctor when no profiles exist', async () => {
-    const codexHome = await createCodexHome()
-    let doctorCalls = 0
-
-    await expect(
-      loadCodexAccounts({
-        codexHome,
-        command: 'codex',
-        doctor: {
-          check: async () => {
-            doctorCalls += 1
-            return { status: 'ok', statusText: 'login ok' }
-          }
-        }
-      })
-    ).resolves.toEqual([])
-    expect(doctorCalls).toBe(0)
+  it('searches the augmented PATH', async () => {
+    const directory = await tempDir()
+    await mkdir(path.join(directory, 'bin'))
+    expect(findBinary('codex', ['/missing', path.join(directory, 'bin')].join(path.delimiter), (file) => file === path.join(directory, 'bin/codex'))).toBe(path.join(directory, 'bin/codex'))
   })
 })

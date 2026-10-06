@@ -1,16 +1,32 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import { PULSE_CHANNELS, type PulseBridge, type PulseIpcResponse } from '../shared/ipc'
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { CHANNELS, type PulseBridge } from '../shared/ipc'
 
-const pulseBridge: PulseBridge = {
-  getSnapshot: (): Promise<PulseIpcResponse<typeof PULSE_CHANNELS.getSnapshot>> => ipcRenderer.invoke(PULSE_CHANNELS.getSnapshot),
-  openProfiles: (): Promise<PulseIpcResponse<typeof PULSE_CHANNELS.openProfiles>> => ipcRenderer.invoke(PULSE_CHANNELS.openProfiles),
-  openConfig: (): Promise<PulseIpcResponse<typeof PULSE_CHANNELS.openConfig>> => ipcRenderer.invoke(PULSE_CHANNELS.openConfig),
-  quit: (): Promise<PulseIpcResponse<typeof PULSE_CHANNELS.quit>> => ipcRenderer.invoke(PULSE_CHANNELS.quit),
-  onRefreshRequest: (callback: () => void): (() => void) => {
-    const listener = (): void => callback()
-    ipcRenderer.on(PULSE_CHANNELS.refreshRequest, listener)
-    return () => ipcRenderer.removeListener(PULSE_CHANNELS.refreshRequest, listener)
-  }
+function subscribe<T>(channel: string, callback: (value: T) => void): () => void {
+  const listener = (_event: IpcRendererEvent, value: T): void => callback(value)
+  ipcRenderer.on(channel, listener)
+  return () => ipcRenderer.removeListener(channel, listener)
 }
 
-contextBridge.exposeInMainWorld('pulse', pulseBridge)
+const bridge: PulseBridge = {
+  snapshot: () => ipcRenderer.invoke(CHANNELS.snapshot),
+  refresh: () => ipcRenderer.invoke(CHANNELS.refresh),
+  quit: () => ipcRenderer.invoke(CHANNELS.quit),
+  onSnapshot: (callback) => subscribe(CHANNELS.snapshotUpdated, callback),
+
+  getSettings: () => ipcRenderer.invoke(CHANNELS.getSettings),
+  saveSettings: (settings) => ipcRenderer.invoke(CHANNELS.saveSettings, settings),
+  setSecret: (key, value) => ipcRenderer.invoke(CHANNELS.setSecret, key, value),
+
+  listAccounts: () => ipcRenderer.invoke(CHANNELS.listAccounts),
+  startLogin: (provider, accountId) => ipcRenderer.invoke(CHANNELS.startLogin, provider, accountId),
+  submitLoginCode: (code) => ipcRenderer.invoke(CHANNELS.submitLoginCode, code),
+  cancelLogin: () => ipcRenderer.invoke(CHANNELS.cancelLogin),
+  activateAccount: (id) => ipcRenderer.invoke(CHANNELS.activateAccount, id),
+  removeAccount: (id) => ipcRenderer.invoke(CHANNELS.removeAccount, id),
+  onLoginState: (callback) => subscribe(CHANNELS.loginStateUpdated, callback),
+  onAccountsChanged: (callback) => subscribe(CHANNELS.accountsChanged, () => callback()),
+
+  openExternal: (url) => ipcRenderer.invoke(CHANNELS.openExternal, url)
+}
+
+contextBridge.exposeInMainWorld('pulse', bridge)
