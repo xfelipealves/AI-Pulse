@@ -56,7 +56,7 @@ Providers that aren't signed in on your Mac simply don't appear. Turn providers 
 
 ### Download
 
-1. Grab the latest `AI Pulse-<version>-arm64.dmg` from **[Releases](https://github.com/xfelipealves/AI-Pulse/releases/latest)** (Apple silicon).
+1. Download the latest `.dmg` from **[Releases](https://github.com/xfelipealves/AI-Pulse/releases/latest)** (Apple silicon).
 2. Drag **AI Pulse** to Applications.
 3. The app is not notarized yet, so macOS blocks the first launch. Right-click the app → **Open**, or run:
 
