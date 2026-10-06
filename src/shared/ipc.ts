@@ -1,28 +1,44 @@
-import type { PulseSnapshot } from '../shared'
+import type { LoginState, ManagedAccount, SecretKey, Settings, SettingsState, Snapshot } from './types'
 
-export const PULSE_CHANNELS = {
-  getSnapshot: 'pulse:getSnapshot',
-  openProfiles: 'pulse:openProfiles',
-  openConfig: 'pulse:openConfig',
+export const CHANNELS = {
+  snapshot: 'pulse:snapshot',
+  refresh: 'pulse:refresh',
   quit: 'pulse:quit',
-  refreshRequest: 'pulse:refresh-request'
+  snapshotUpdated: 'pulse:snapshot-updated',
+  getSettings: 'pulse:get-settings',
+  saveSettings: 'pulse:save-settings',
+  setSecret: 'pulse:set-secret',
+  listAccounts: 'pulse:list-accounts',
+  startLogin: 'pulse:start-login',
+  submitLoginCode: 'pulse:submit-login-code',
+  cancelLogin: 'pulse:cancel-login',
+  activateAccount: 'pulse:activate-account',
+  removeAccount: 'pulse:remove-account',
+  loginStateUpdated: 'pulse:login-state',
+  accountsChanged: 'pulse:accounts-changed',
+  openExternal: 'pulse:open-external'
 } as const
 
-export type PulseIpcContract = {
-  [PULSE_CHANNELS.getSnapshot]: { request: []; response: PulseSnapshot }
-  [PULSE_CHANNELS.openProfiles]: { request: []; response: void }
-  [PULSE_CHANNELS.openConfig]: { request: []; response: void }
-  [PULSE_CHANNELS.quit]: { request: []; response: void }
-}
-
-export type PulseIpcChannel = keyof PulseIpcContract
-export type PulseIpcRequest<Channel extends PulseIpcChannel> = PulseIpcContract[Channel]['request']
-export type PulseIpcResponse<Channel extends PulseIpcChannel> = PulseIpcContract[Channel]['response']
-
 export type PulseBridge = {
-  getSnapshot: () => Promise<PulseIpcResponse<typeof PULSE_CHANNELS.getSnapshot>>
-  openProfiles: () => Promise<PulseIpcResponse<typeof PULSE_CHANNELS.openProfiles>>
-  openConfig: () => Promise<PulseIpcResponse<typeof PULSE_CHANNELS.openConfig>>
-  quit: () => Promise<PulseIpcResponse<typeof PULSE_CHANNELS.quit>>
-  onRefreshRequest: (callback: () => void) => () => void
+  /** The latest snapshot, or null before the first load finishes. */
+  snapshot: () => Promise<Snapshot | null>
+  refresh: () => Promise<void>
+  quit: () => Promise<void>
+  onSnapshot: (callback: (snapshot: Snapshot) => void) => () => void
+
+  getSettings: () => Promise<SettingsState>
+  saveSettings: (settings: Settings) => Promise<SettingsState>
+  setSecret: (key: SecretKey, value: string | null) => Promise<SettingsState>
+
+  listAccounts: () => Promise<ManagedAccount[]>
+  startLogin: (provider: 'codex' | 'claude', accountId?: string) => Promise<void>
+  submitLoginCode: (code: string) => Promise<void>
+  cancelLogin: () => Promise<void>
+  activateAccount: (id: string) => Promise<void>
+  removeAccount: (id: string) => Promise<void>
+  onLoginState: (callback: (state: LoginState | null) => void) => () => void
+  onAccountsChanged: (callback: () => void) => () => void
+
+  /** Opens an https URL in the default browser. */
+  openExternal: (url: string) => Promise<void>
 }

@@ -1,37 +1,22 @@
-export type Rectangle = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+export type Rect = { x: number; y: number; width: number; height: number }
+export type Size = { width: number; height: number }
 
-export type WindowSize = {
-  width: number
-  height: number
-}
+export const POPUP_SIZE: Size = { width: 420, height: 720 }
+const TRAY_GAP = 32
 
-export const PREFERRED_POPUP_SIZE: WindowSize = { width: 420, height: 720 }
-
-const TRAY_WINDOW_GAP = 32
-
-export function positionBelowTray(trayBounds: Rectangle, workArea: Rectangle, preferredSize: WindowSize): Rectangle {
-  const { width, height } = sizeWithinWorkArea(workArea, preferredSize)
-  const maxX = workArea.x + workArea.width - width
-  const maxY = workArea.y + workArea.height - height
-  const desiredX = Math.round(trayBounds.x + trayBounds.width / 2 - width / 2)
-  const desiredY = Math.round(trayBounds.y + trayBounds.height + TRAY_WINDOW_GAP)
-
+/** Centers the popup under the tray icon, kept inside the display's work area. */
+export function belowTray(tray: Rect, workArea: Rect, preferred: Size = POPUP_SIZE): Rect {
+  const { width, height } = fit(workArea, preferred)
   return {
-    x: clamp(desiredX, workArea.x, maxX),
-    y: clamp(desiredY, workArea.y, maxY),
+    x: clamp(Math.round(tray.x + tray.width / 2 - width / 2), workArea.x, workArea.x + workArea.width - width),
+    y: clamp(Math.round(tray.y + tray.height + TRAY_GAP), workArea.y, workArea.y + workArea.height - height),
     width,
     height
   }
 }
 
-export function centerInWorkArea(workArea: Rectangle, preferredSize: WindowSize): Rectangle {
-  const { width, height } = sizeWithinWorkArea(workArea, preferredSize)
-
+export function centered(workArea: Rect, preferred: Size = POPUP_SIZE): Rect {
+  const { width, height } = fit(workArea, preferred)
   return {
     x: Math.round(workArea.x + (workArea.width - width) / 2),
     y: Math.round(workArea.y + (workArea.height - height) / 2),
@@ -40,13 +25,10 @@ export function centerInWorkArea(workArea: Rectangle, preferredSize: WindowSize)
   }
 }
 
-function sizeWithinWorkArea(workArea: Rectangle, preferredSize: WindowSize): WindowSize {
-  return {
-    width: Math.min(preferredSize.width, workArea.width),
-    height: Math.min(preferredSize.height, workArea.height)
-  }
+function fit(workArea: Rect, preferred: Size): Size {
+  return { width: Math.min(preferred.width, workArea.width), height: Math.min(preferred.height, workArea.height) }
 }
 
-function clamp(value: number, minimum: number, maximum: number): number {
-  return Math.min(Math.max(value, minimum), maximum)
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
 }

@@ -12,7 +12,9 @@ export default defineConfig({
   preload: {
     build: {
       rollupOptions: {
-        input: 'src/preload/preload.ts'
+        input: 'src/preload/preload.ts',
+        // Sandboxed preload scripts must be CommonJS.
+        output: { format: 'cjs', entryFileNames: '[name].cjs' }
       }
     }
   },

@@ -1,8 +1,8 @@
 {
   "name": "ai-pulse",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "A local macOS menu bar monitor for Codex usage limits.",
+  "description": "A macOS menu bar monitor for Codex, Claude Code and Cursor usage limits.",
   "author": "Felipe Alves",
   "main": "out/main/main.js",
   "type": "module",
@@ -20,7 +20,9 @@
   },
   "homepage": "https://github.com/xfelipealves/AI-Pulse#readme",
   "keywords": [
+    "claude",
     "codex",
+    "cursor",
     "electron",
     "local-first",
     "macos",
@@ -37,7 +39,8 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "screenshots": "electron-vite build && AI_PULSE_DEMO=1 AI_PULSE_CAPTURE=docs/images electron ."
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
